@@ -7,13 +7,14 @@ from io import BytesIO
 import gzip
 import boto3
 import os
+import uuid
 
 def lambda_bulk_handler(event, context):
     user_records = deaggregate_records(event['Records'])
-
     s3 = boto3.resource('s3')
     bucket = s3.Bucket(os.environ.get('BUCKET'))
-    key = datetime.now().strftime('%Y-%m-%d_%H-%M-%S.log.gz')
+    key ="{}_{}.log.gz".format(datetime.now().strftime('%Y-%m-%d-%H-%M-%S'), uuid.uuid1())
+    s3_path = "{}/{}".format(datetime.now().strftime('%Y/%m/%d/%H'), (key))
     file_path = '/tmp/{}'.format(key)
 
     with gzip.open(file_path, 'wb') as f:
@@ -22,6 +23,7 @@ def lambda_bulk_handler(event, context):
             f.write(payload)
             f.write("\n")
 
-    bucket.upload_file(file_path, key)
+    bucket.upload_file(file_path, s3_path)
+    os.remove(file_path)
 
     return 'Successfully processed {} records.'.format(len(user_records))
